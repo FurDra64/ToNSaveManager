@@ -49,11 +49,14 @@ namespace ToNSaveManager
         [STAThread]
         static void Main(string[] args)
         {
+            Console.Beep();
             Logger.Log("Initializing logging.");
 
             try {
+                Console.Beep();
                 Directory.SetCurrentDirectory(ProgramDirectory);
                 Logger.Log("Program Directory: " + ProgramDirectory);
+                Console.Beep();
             } catch (Exception e) {
                 Logger.Error("Failed to set Program Directory to: " + ProgramDirectory);
                 Logger.Error(e.ToString());
@@ -64,6 +67,7 @@ namespace ToNSaveManager
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+            Console.Beep();
 
             if (CheckMutex()) {
                 // Don't run program if it's already running, instead we focus the already existing window
