@@ -49,56 +49,55 @@ namespace ToNSaveManager
         [STAThread]
         static void Main(string[] args)
         {
-            Console.Beep();
-            Logger.Log("Initializing logging.");
-
             try {
+                Console.Beep();
+                Logger.Log("Initializing logging.");
+
                 Console.Beep();
                 Directory.SetCurrentDirectory(ProgramDirectory);
                 Logger.Log("Program Directory: " + ProgramDirectory);
                 Console.Beep();
+
+                Arguments = args;
+                CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+                CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+                Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+                Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+                Console.Beep();
+
+                if (CheckMutex()) {
+                    // Don't run program if it's already running, instead we focus the already existing window
+                    NativeMethods.PostMessage((IntPtr)NativeMethods.HWND_BROADCAST, NativeMethods.WM_FOCUSINST, IntPtr.Zero, IntPtr.Zero);
+                    return;
+                }
+
+                if (!Directory.Exists(DataLocation)) Directory.CreateDirectory(DataLocation);
+
+                LANG.Initialize();
+                Updater.CheckPostUpdate(args);
+
+                Logger.Log("Initializing application rendering.");
+                ApplicationConfiguration.Initialize();
+                Application.SetCompatibleTextRenderingDefault(true);
+
+                Logger.Log("Initializing font.");
+                InitializeFont();
+
+                MainWindow.Started = false;
+
+                if (!StartCheckForUpdate()) {
+                    Application.ApplicationExit += OnApplicationExit;
+
+                    Logger.Log("Running 'MainWindow'");
+                    Application.Run(new MainWindow());
+                }
+
+                // Check when all forms close
+                Logger.Log("All windows are closed...");
+                GitHubUpdate.Start();
             } catch (Exception e) {
-                Logger.Error("Failed to set Program Directory to: " + ProgramDirectory);
-                Logger.Error(e.ToString());
+                File.WriteAllText(Path.Combine(DataLocation, "output.error"), e.ToString());
             }
-
-            Arguments = args;
-            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
-            Console.Beep();
-
-            if (CheckMutex()) {
-                // Don't run program if it's already running, instead we focus the already existing window
-                NativeMethods.PostMessage((IntPtr)NativeMethods.HWND_BROADCAST, NativeMethods.WM_FOCUSINST, IntPtr.Zero, IntPtr.Zero);
-                return;
-            }
-
-            if (!Directory.Exists(DataLocation)) Directory.CreateDirectory(DataLocation);
-
-            LANG.Initialize();
-            Updater.CheckPostUpdate(args);
-
-            Logger.Log("Initializing application rendering.");
-            ApplicationConfiguration.Initialize();
-            Application.SetCompatibleTextRenderingDefault(true);
-
-            Logger.Log("Initializing font.");
-            InitializeFont();
-
-            MainWindow.Started = false;
-
-            if (!StartCheckForUpdate()) {
-                Application.ApplicationExit += OnApplicationExit;
-
-                Logger.Log("Running 'MainWindow'");
-                Application.Run(new MainWindow());
-            }
-
-            // Check when all forms close
-            Logger.Log("All windows are closed...");
-            GitHubUpdate.Start();
         }
 
         private static void OnApplicationExit(object? sender, EventArgs e) {
