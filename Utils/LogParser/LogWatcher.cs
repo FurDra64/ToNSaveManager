@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Globalization;
     using System.IO;
     using System.Reflection;
@@ -34,8 +33,24 @@
         private DirectoryInfo m_LogDirectoryInfo;
         private readonly Dictionary<string, T> m_LogContextMap = new Dictionary<string, T>();
 
-        internal static string GetVRChatDataLocation() =>
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat";
+        internal static string GetVRChatDataLocationWin() => Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"Low\VRChat";
+
+        internal static string GetVRChatDataLocation()
+        {
+            const string VRChatAppID = "438100";
+            const string SteamCompDataPath = "STEAM_COMPAT_DATA_PATH";
+            string? compatDataPath = Environment.GetEnvironmentVariable(SteamCompDataPath);
+
+            if (string.IsNullOrEmpty(compatDataPath))
+                return GetVRChatDataLocationWin();
+
+            compatDataPath = Path.Combine(Path.GetDirectoryName(compatDataPath) ?? string.Empty, VRChatAppID, @"pfx\drive_c\users\steamuser\AppData\LocalLow\VRChat");
+
+            if (!Directory.Exists(compatDataPath))
+                return GetVRChatDataLocationWin();
+
+            return compatDataPath;
+        }
 
         #region From Settings
         bool SkipParsedLogs => Settings.Get.SkipParsedLogs;
