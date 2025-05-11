@@ -46,11 +46,8 @@ namespace ToNSaveManager.Utils.API {
                 
                 try {
                     // Linux環境では、ポートの指定方法を変更
-                    string[] prefixes = new string[] {
-                        $"http://localhost:{port}",
-                        $"http://127.0.0.1:{port}"
-                    };
-                    Server = new WebSocketServer(prefixes);
+                    string prefix = $"http://localhost:{port}";
+                    Server = new WebSocketServer(prefix);
                     Server.ClientConnected += Server_ClientConnected;
                     Server.ClientDisconnected += Server_ClientDisconnected;
                 } catch (Exception ex) {
