@@ -41,37 +41,44 @@ namespace ToNSaveManager.Utils.API {
 
         const int DEFAULT_PORT = 11398;
         internal static void Initialize() {
-            if (Settings.Get.WebSocketEnabled && Server == null) {
-                int port = Settings.Get.WebSocketPort > 0 ? Settings.Get.WebSocketPort : DEFAULT_PORT;
-                
-                try {
-                    // Linux環境では、ポートの指定方法を変更
-                    string prefix = $"http://localhost:{port}";
-                    Server = new WebSocketServer(prefix);
-                    Server.ClientConnected += Server_ClientConnected;
-                    Server.ClientDisconnected += Server_ClientDisconnected;
-                } catch (Exception ex) {
-                    Logger.Error("WebSocket server initialization failed: " + ex.Message);
-                    return;
+            if (Settings.Get.WebSocketEnabled) {
+                if (Server == null) {
+                    try {
+                        int port = Settings.Get.WebSocketPort > 0 ? Settings.Get.WebSocketPort : DEFAULT_PORT;
+                        string prefix = $"http://localhost:{port}";
+                        
+                        // サーバーを再作成
+                        Server = new WebSocketServer(prefix);
+                        Server.ClientConnected += Server_ClientConnected;
+                        Server.ClientDisconnected += Server_ClientDisconnected;
+                        
+                        // サーバーを開始
+                        Server.Start();
+                        Logger.Log($"WebSocket server started on port {port}");
+                    } catch (Exception ex) {
+                        Logger.Error($"Failed to start WebSocket server: {ex.Message}");
+                        Server?.Dispose();
+                        Server = null;
+                        return;
+                    }
+                } else if (!Server.IsListening) {
+                    try {
+                        Server.Start();
+                        Logger.Log("WebSocket server restarted");
+                    } catch (Exception ex) {
+                        Logger.Error($"Failed to restart WebSocket server: {ex.Message}");
+                        Server?.Dispose();
+                        Server = null;
+                    }
                 }
-            }
-
-            if (Settings.Get.WebSocketEnabled && Server != null && !Server.IsListening) {
-                Logger.Log("Starting Server...");
-                try {
-                    Server.Start();
-                } catch (Exception ex) {
-                    Logger.Error("Failed to start WebSocket server: " + ex.Message);
-                    return;
-                }
-            } else if (!Settings.Get.WebSocketEnabled && Server != null && Server.IsListening) {
-                Logger.Log("Stopping Server...");
+            } else if (Server != null) {
                 try {
                     Server.Stop();
                     Server.Dispose();
                     Server = null;
+                    Logger.Log("WebSocket server stopped");
                 } catch (Exception ex) {
-                    Logger.Error("Failed to stop WebSocket server: " + ex.Message);
+                    Logger.Error($"Failed to stop WebSocket server: {ex.Message}");
                 }
             }
         }
