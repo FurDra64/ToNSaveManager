@@ -20,7 +20,8 @@ using WebSocketServer = WatsonWebsocket.WatsonWsServer;
 namespace ToNSaveManager.Utils.API {
     internal class WebSocketAPI {
         static readonly LoggerSource Logger = new LoggerSource(nameof(WebSocketAPI));
-        internal static WebSocketServer? Server;
+        internal static WebSocketServer? ServerIPv4;
+        internal static WebSocketServer? ServerIPv6;
 
         static void OnOpen(WatsonWebsocket.ClientMetadata metadata) {
             Logger.Log("WebSocket client connected: " + metadata.Guid + " | " + metadata.Ip);
@@ -42,39 +43,52 @@ namespace ToNSaveManager.Utils.API {
         const int DEFAULT_PORT = 11398;
         internal static void Initialize() {
             if (Settings.Get.WebSocketEnabled) {
-                if (Server == null) {
+                if (ServerIPv6 == null && ServerIPv4 == null) {
                     try {
                         int port = Settings.Get.WebSocketPort > 0 ? Settings.Get.WebSocketPort : DEFAULT_PORT;
                         
-                        // サーバーを再作成
-                        Server = new WebSocketServer("*", port);
-                        Server.ClientConnected += Server_ClientConnected;
-                        Server.ClientDisconnected += Server_ClientDisconnected;
+                        // サーバーを再作成 (IPv4とIPv6の両方でリッスン)
+                        ServerIPv6 = new WebSocketServer("::1", port, System.Net.Sockets.AddressFamily.InterNetworkV6);
+                        ServerIPv6.ClientConnected += Server_ClientConnected;
+                        ServerIPv6.ClientDisconnected += Server_ClientDisconnected;
+
+                        ServerIPv4 = new WebSocketServer("127.0.0.1", port, System.Net.Sockets.AddressFamily.InterNetwork);
+                        ServerIPv4.ClientConnected += Server_ClientConnected;
+                        ServerIPv4.ClientDisconnected += Server_ClientDisconnected;
                         
                         // サーバーを開始
-                        Server.Start();
+                        ServerIPv6.Start();
+                        ServerIPv4.Start();
                         Logger.Log($"WebSocket server started on port {port}");
                     } catch (Exception ex) {
                         Logger.Error($"Failed to start WebSocket server: {ex.Message}");
-                        Server?.Dispose();
-                        Server = null;
+                        ServerIPv6?.Dispose();
+                        ServerIPv4?.Dispose();
+                        ServerIPv6 = null;
+                        ServerIPv4 = null;
                         return;
                     }
-                } else if (!Server.IsListening) {
+                } else if ((ServerIPv6 != null && !ServerIPv6.IsListening) || (ServerIPv4 != null && !ServerIPv4.IsListening)) {
                     try {
-                        Server.Start();
+                        if (ServerIPv6 != null && !ServerIPv6.IsListening) ServerIPv6.Start();
+                        if (ServerIPv4 != null && !ServerIPv4.IsListening) ServerIPv4.Start();
                         Logger.Log("WebSocket server restarted");
                     } catch (Exception ex) {
                         Logger.Error($"Failed to restart WebSocket server: {ex.Message}");
-                        Server?.Dispose();
-                        Server = null;
+                        ServerIPv6?.Dispose();
+                        ServerIPv4?.Dispose();
+                        ServerIPv6 = null;
+                        ServerIPv4 = null;
                     }
                 }
-            } else if (Server != null) {
+            } else if (ServerIPv6 != null || ServerIPv4 != null) {
                 try {
-                    Server.Stop();
-                    Server.Dispose();
-                    Server = null;
+                    ServerIPv6?.Stop();
+                    ServerIPv4?.Stop();
+                    ServerIPv6?.Dispose();
+                    ServerIPv4?.Dispose();
+                    ServerIPv6 = null;
+                    ServerIPv4 = null;
                     Logger.Log("WebSocket server stopped");
                 } catch (Exception ex) {
                     Logger.Error($"Failed to stop WebSocket server: {ex.Message}");
@@ -91,11 +105,19 @@ namespace ToNSaveManager.Utils.API {
         }
 
         internal static void Broadcast(string data) {
-            if (Server == null) return;
+            if (ServerIPv6 == null && ServerIPv4 == null) return;
             Logger.Debug("Broadcasting: " + data);
 
-            foreach (var metadata in Server.ListClients()) {
-                _ = Server.SendAsync(metadata.Guid, data).Result;
+            if (ServerIPv6 != null) {
+                foreach (var metadata in ServerIPv6.ListClients()) {
+                    _ = ServerIPv6.SendAsync(metadata.Guid, data).Result;
+                }
+            }
+
+            if (ServerIPv4 != null) {
+                foreach (var metadata in ServerIPv4.ListClients()) {
+                    _ = ServerIPv4.SendAsync(metadata.Guid, data).Result;
+                }
             }
         }
         internal static void SendEvent<T>(T value, WatsonWebsocket.ClientMetadata? metadata) where T : IEvent {
@@ -105,7 +127,10 @@ namespace ToNSaveManager.Utils.API {
             try {
                 if (metadata != null) {
                     Logger.Debug("Sending: " + jsonData);
-                    _ = Server?.SendAsync(metadata.Guid, jsonData).Result;
+                    if (ServerIPv6 != null)
+                        _ = ServerIPv6?.SendAsync(metadata.Guid, jsonData).Result;
+                    if (ServerIPv4 != null)
+                        _ = ServerIPv4?.SendAsync(metadata.Guid, jsonData).Result;
                     return;
                 }
 
