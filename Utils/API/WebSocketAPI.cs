@@ -47,7 +47,7 @@ namespace ToNSaveManager.Utils.API {
                         int port = Settings.Get.WebSocketPort > 0 ? Settings.Get.WebSocketPort : DEFAULT_PORT;
                         
                         // サーバーを再作成
-                        Server = new WebSocketServer("localhost", port);
+                        Server = new WebSocketServer("*", port);
                         Server.ClientConnected += Server_ClientConnected;
                         Server.ClientDisconnected += Server_ClientDisconnected;
                         
