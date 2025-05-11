@@ -95,9 +95,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.get_date.outputs.date }}
-        name: Release ${{ steps.get_date.outputs.date }}
+        name: Test Upload ${{ steps.get_date.outputs.date }}
         body: |
-          # [Download](https://github.com/ChrisFeline/ToNSaveManager/releases/latest/download/ToNSaveManager.zip)
+          # [Download](https://github.com/FurDra64/ToNSaveManager/releases/latest/download/ToNSaveManager.zip)
 
           [changelog]: <> (START)
           ### Changes in this release
@@ -105,11 +105,11 @@ jobs:
 
           [changelog]: <> (END)
 
-          **NOTE:** If you are unsure what to do, go check the [README](https://github.com/ChrisFeline/ToNSaveManager/blob/main/README.md#how-do-i-use-this), basically just extract and run.
+          **NOTE:** If you are unsure what to do, go check the [README](https://github.com/FurDra64/ToNSaveManager/blob/main/README.md#how-do-i-use-this), basically just extract and run.
 
           ### If you already downloaded and want to update an old release you have these options:
           * Click on `Settings`, then click `Check For Updates`.
           * If previous option doesn't work, open the file `update.bat`, the new files will be downloaded.
         draft: true
-        prerelease: false
+        prerelease: true
         files: ./ToNSaveManager.zip

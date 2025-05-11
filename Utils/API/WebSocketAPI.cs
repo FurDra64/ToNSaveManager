@@ -1,4 +1,4 @@
-﻿using Jint.Native;
+using Jint.Native;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -43,21 +43,39 @@ namespace ToNSaveManager.Utils.API {
         internal static void Initialize() {
             if (Settings.Get.WebSocketEnabled && Server == null) {
                 int port = Settings.Get.WebSocketPort > 0 ? Settings.Get.WebSocketPort : DEFAULT_PORT;
-                Server = new WebSocketServer(new List<string>() { IPAddress.Loopback.ToString(), "localhost" }, port);
-                //Server.AddWebSocketService<WebSocketAPI>("/");
-
-                Server.ClientConnected += Server_ClientConnected;
-                Server.ClientDisconnected += Server_ClientDisconnected;
+                
+                try {
+                    // Linux環境では、ポートの指定方法を変更
+                    string[] prefixes = new string[] {
+                        $"http://localhost:{port}",
+                        $"http://127.0.0.1:{port}"
+                    };
+                    Server = new WebSocketServer(prefixes);
+                    Server.ClientConnected += Server_ClientConnected;
+                    Server.ClientDisconnected += Server_ClientDisconnected;
+                } catch (Exception ex) {
+                    Logger.Error("WebSocket server initialization failed: " + ex.Message);
+                    return;
+                }
             }
 
             if (Settings.Get.WebSocketEnabled && Server != null && !Server.IsListening) {
                 Logger.Log("Starting Server...");
-                Server.Start();
+                try {
+                    Server.Start();
+                } catch (Exception ex) {
+                    Logger.Error("Failed to start WebSocket server: " + ex.Message);
+                    return;
+                }
             } else if (!Settings.Get.WebSocketEnabled && Server != null && Server.IsListening) {
                 Logger.Log("Stopping Server...");
-                Server.Stop();
-                Server.Dispose();
-                Server = null;
+                try {
+                    Server.Stop();
+                    Server.Dispose();
+                    Server = null;
+                } catch (Exception ex) {
+                    Logger.Error("Failed to stop WebSocket server: " + ex.Message);
+                }
             }
         }
 
